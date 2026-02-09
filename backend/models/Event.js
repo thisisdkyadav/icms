@@ -16,8 +16,12 @@ const eventSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin'
   },
+  assignedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  }],
   certificateTemplate: {
-    type: String  // Path to certificate template
+    type: String
   }
 }, { timestamps: true });
 

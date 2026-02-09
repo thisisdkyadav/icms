@@ -9,21 +9,42 @@ const participantSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  phone: {
+    type: String
+  },
   event: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Event',
     required: true
   },
   qrCode: {
-    type: String  // Unique QR code data
+    type: String
   },
   attended: {
     type: Boolean,
     default: false
   },
+  // Payment details
+  transactionId: {
+    type: String
+  },
+  transactionTime: {
+    type: String
+  },
+  amount: {
+    type: String
+  },
+  paymentMode: {
+    type: String
+  },
+  receiptSent: {
+    type: Boolean,
+    default: false
+  },
+  // Additional fields from CSV
   dataFields: {
     type: Map,
-    of: String  // For additional CSV fields
+    of: String
   }
 }, { timestamps: true });
 
