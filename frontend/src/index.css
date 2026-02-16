@@ -58,12 +58,12 @@ img { max-width: 100%; display: block; }
 }
 .navbar-page { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 .navbar-page__title {
-  font-size: var(--text-sm); font-weight: var(--font-semibold);
+  font-size: var(--text-base); font-weight: var(--font-semibold);
   color: var(--text-primary); line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .navbar-page__sub {
-  font-size: var(--text-xs); color: var(--text-muted); line-height: 1.3;
+  font-size: var(--text-sm); color: var(--text-muted); line-height: 1.3;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .navbar-actions {
@@ -119,7 +119,7 @@ img { max-width: 100%; display: block; }
 .sidebar a {
   display: flex; align-items: center; gap: var(--sp-3);
   color: var(--text-secondary); text-decoration: none;
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
   font-size: var(--text-sm); font-weight: var(--font-medium);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
@@ -197,7 +197,7 @@ button, .btn {
 }
 .btn-primary {
   background: var(--gradient-primary); color: #fff;
-  padding: var(--sp-2) var(--sp-4); font-size: var(--text-sm);
+  padding: var(--sp-3) var(--sp-5); font-size: var(--text-sm);
   box-shadow: var(--shadow-primary);
 }
 .btn-primary:hover {
@@ -208,7 +208,7 @@ button, .btn {
 .btn-primary:disabled { background: var(--gray-300); box-shadow: none; cursor: not-allowed; transform: none; }
 .btn-secondary {
   background: var(--bg-card); color: var(--text-primary);
-  padding: var(--sp-2) var(--sp-4); font-size: var(--text-sm);
+  padding: var(--sp-3) var(--sp-5); font-size: var(--text-sm);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-xs);
 }
@@ -219,7 +219,7 @@ button, .btn {
 .btn-secondary:active { transform: translateY(0); }
 .btn-danger {
   background: var(--danger-bg); color: var(--danger);
-  padding: var(--sp-2) var(--sp-4); font-size: var(--text-sm);
+  padding: var(--sp-3) var(--sp-5); font-size: var(--text-sm);
   border: 1px solid transparent;
 }
 .btn-danger:hover { background: var(--danger); color: #fff; transform: translateY(-1px); }
@@ -229,7 +229,7 @@ button, .btn {
   padding: var(--sp-2) var(--sp-3); font-size: var(--text-sm);
 }
 .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
-.btn-sm { padding: var(--sp-1) var(--sp-3); font-size: var(--text-xs); }
+.btn-sm { padding: var(--sp-2) var(--sp-4); font-size: var(--text-xs); }
 
 /* ---------- Cards (Premium) ---------- */
 .card {
@@ -262,7 +262,7 @@ button, .btn {
 /* ---------- Stat Cards ---------- */
 .stat-card {
   display: flex; align-items: center; gap: var(--sp-4);
-  padding: var(--sp-4) var(--sp-5);
+  padding: var(--sp-5);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -273,7 +273,7 @@ button, .btn {
   box-shadow: var(--shadow-sm);
 }
 .stat-card__icon {
-  width: 42px; height: 42px; border-radius: var(--radius-md);
+  width: 48px; height: 48px; border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -347,7 +347,7 @@ button, .btn {
 }
 .data-table th,
 .data-table td {
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4);
   text-align: left; font-size: var(--text-sm);
   border-bottom: 1px solid var(--border-light);
   white-space: nowrap;
