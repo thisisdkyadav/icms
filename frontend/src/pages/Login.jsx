@@ -27,22 +27,25 @@ function Login() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-box">
-                <h1>ICMS Login</h1>
-                <p>In-House Conference Management System</p>
+        <div className="login-page">
+            <div className="login-card">
+                <div className="login-logo">
+                    <h1>ICMS</h1>
+                    <p>In-House Conference Management System</p>
+                </div>
 
                 {error && <div className="error-message">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Email</label>
+                        <label>Email Address</label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Enter your email"
+                            placeholder="you@example.com"
                             required
+                            autoFocus
                         />
                     </div>
                     <div className="form-group">
@@ -56,7 +59,7 @@ function Login() {
                         />
                     </div>
                     <button type="submit" className="btn-primary" disabled={loading}>
-                        {loading ? 'Logging in...' : 'Login'}
+                        {loading ? 'Signing in…' : 'Sign In'}
                     </button>
                 </form>
             </div>
