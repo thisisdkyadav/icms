@@ -1,19 +1,18 @@
 import express from 'express';
+import * as eventController from '../controllers/eventController.js';
+import { authMiddleware, adminOrHigher } from '../middleware/authMiddleware.js';
+
 const router = express.Router();
 
-// TODO: Import controller
-// import * as eventController from '../controllers/eventController.js';
+// All routes are protected
+router.use(authMiddleware);
 
 // Event routes
-router.get('/', (req, res) => {
-  res.json({ message: 'Event routes working' });
-});
-
-// TODO: Add these routes
-// POST /api/events - Create new event
-// GET /api/events - Get all events
-// GET /api/events/:id - Get event by ID
-// PUT /api/events/:id - Update event
-// DELETE /api/events/:id - Delete event
+router.post('/', adminOrHigher, eventController.createEvent);
+router.get('/', eventController.getAllEvents);
+router.get('/:id', eventController.getEventById);
+router.put('/:id', eventController.updateEvent);
+router.delete('/:id', adminOrHigher, eventController.deleteEvent);
+router.post('/:id/assign', adminOrHigher, eventController.assignUser);
 
 export default router;

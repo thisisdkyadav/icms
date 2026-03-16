@@ -1,18 +1,17 @@
 import express from 'express';
+import * as adminController from '../controllers/adminController.js';
+import { authMiddleware, superAdminOnly } from '../middleware/authMiddleware.js';
+
 const router = express.Router();
 
-// TODO: Import controller
-// import * as adminController from '../controllers/adminController.js';
+// Public routes
+router.post('/login', adminController.login);
 
-// Admin routes
-router.get('/', (req, res) => {
-  res.json({ message: 'Admin routes working' });
-});
-
-// TODO: Add these routes
-// POST /api/admin/login - Admin login
-// POST /api/admin/register - Register new admin (super admin only)
-// GET /api/admin/all - Get all admins (super admin only)
-// DELETE /api/admin/:id - Remove admin (super admin only)
+// Protected routes
+router.get('/profile', authMiddleware, adminController.getProfile);
+router.post('/register', authMiddleware, superAdminOnly, adminController.register);
+router.get('/all', authMiddleware, superAdminOnly, adminController.getAllAdmins);
+router.put('/:id', authMiddleware, superAdminOnly, adminController.updateAdmin);
+router.delete('/:id', authMiddleware, superAdminOnly, adminController.deleteAdmin);
 
 export default router;
