@@ -39,6 +39,7 @@ export const getProfile = () => api.get('/admin/profile');
 
 // User Management APIs (SuperAdmin)
 export const getAllUsers = () => api.get('/admin/all');
+export const getAssignableUsers = () => api.get('/admin/assignable');
 export const createUser = (data) => api.post('/admin/register', data);
 export const updateUser = (id, data) => api.put(`/admin/${id}`, data);
 export const deleteUser = (id) => api.delete(`/admin/${id}`);
@@ -50,6 +51,7 @@ export const createEvent = (data) => api.post('/events', data);
 export const updateEvent = (id, data) => api.put(`/events/${id}`, data);
 export const deleteEvent = (id) => api.delete(`/events/${id}`);
 export const assignUserToEvent = (eventId, userId) => api.post(`/events/${eventId}/assign`, { userId });
+export const unassignUserFromEvent = (eventId, userId) => api.delete(`/events/${eventId}/assign/${userId}`);
 
 // Participant APIs
 export const getParticipants = (eventId) => api.get(`/participants/event/${eventId}`);

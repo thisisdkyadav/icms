@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getEvent, getParticipants, importParticipants, sendQRCodes, sendCertificates, sendReceipts, sendNotifications } from '../services/api';
+import {
+    getEvent,
+    getParticipants,
+    getAssignableUsers,
+    importParticipants,
+    sendQRCodes,
+    sendCertificates,
+    sendReceipts,
+    sendNotifications,
+    assignUserToEvent,
+    unassignUserFromEvent
+} from '../services/api';
 import { usePage } from '../contexts/PageContext';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
@@ -17,26 +28,38 @@ function EventDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { setPage } = usePage();
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     const [event, setEvent] = useState(null);
     const [participants, setParticipants] = useState([]);
+    const [assignableUsers, setAssignableUsers] = useState([]);
+    const [selectedAssignee, setSelectedAssignee] = useState('');
     const [loading, setLoading] = useState(true);
     const [showImport, setShowImport] = useState(false);
     const [showNotify, setShowNotify] = useState(false);
+    const [showAssignments, setShowAssignments] = useState(false);
     const [notification, setNotification] = useState({ subject: '', message: '' });
     const [toast, setToast] = useState(null);
     const [actionLoading, setActionLoading] = useState('');
+    const [assignmentLoading, setAssignmentLoading] = useState('');
     const [confirmAction, setConfirmAction] = useState(null);
     const [importConfirm, setImportConfirm] = useState(null);
     const fileInputRef = useRef(null);
 
     useEffect(() => { loadData(); }, [id]);
+    useEffect(() => {
+        if (event && canManageAssignments(event)) {
+            loadAssignableUsers();
+        }
+    }, [event]);
 
     useEffect(() => {
         if (event) {
+            const canManage = canManageAssignments(event);
             setPage(
                 event.name,
                 `${new Date(event.date).toLocaleDateString()} — ${participants.length} participants`,
                 <>
+                    {canManage && <button onClick={() => setShowAssignments(true)} className="btn-secondary btn-sm" disabled={!!actionLoading || !!assignmentLoading}>Manage Access</button>}
                     <button onClick={() => setShowImport(true)} className="btn-secondary btn-sm" disabled={!!actionLoading}>Import CSV</button>
                     <button onClick={() => setShowNotify(true)} className="btn-secondary btn-sm" disabled={!!actionLoading}>Notify</button>
                     <button onClick={() => navigate('/events')} className="btn-ghost btn-sm">Back</button>
@@ -52,6 +75,22 @@ function EventDetail() {
             setParticipants(participantsRes.data);
         } catch (error) { console.error('Failed to load data:', error); }
         finally { setLoading(false); }
+    };
+
+    const getCurrentUserId = () => currentUser.id || currentUser._id;
+    const isEventCreator = (loadedEvent) => {
+        const creatorId = loadedEvent?.createdBy?._id || loadedEvent?.createdBy;
+        return creatorId === getCurrentUserId();
+    };
+    const canManageAssignments = (loadedEvent) => currentUser.role === 'superadmin' || (currentUser.role === 'admin' && isEventCreator(loadedEvent));
+
+    const loadAssignableUsers = async () => {
+        try {
+            const response = await getAssignableUsers();
+            setAssignableUsers(response.data);
+        } catch (error) {
+            console.error('Failed to load assignable users:', error);
+        }
     };
 
     const downloadTemplate = () => {
@@ -122,12 +161,48 @@ function EventDetail() {
         catch { setToast({ message: 'Failed to send notifications', type: 'error' }); }
     };
 
+    const handleAssignUser = async () => {
+        if (!selectedAssignee) {
+            setToast({ message: 'Select an admin or sub-admin first', type: 'error' });
+            return;
+        }
+
+        setAssignmentLoading('assign');
+        try {
+            const response = await assignUserToEvent(id, selectedAssignee);
+            setEvent(response.data);
+            setSelectedAssignee('');
+            setToast({ message: 'User assigned to event', type: 'success' });
+        } catch (error) {
+            setToast({ message: error.response?.data?.message || 'Failed to assign user', type: 'error' });
+        } finally {
+            setAssignmentLoading('');
+        }
+    };
+
+    const handleUnassignUser = async (userId) => {
+        setAssignmentLoading(userId);
+        try {
+            const response = await unassignUserFromEvent(id, userId);
+            setEvent(response.data);
+            setToast({ message: 'User removed from event', type: 'success' });
+        } catch (error) {
+            setToast({ message: error.response?.data?.message || 'Failed to remove user', type: 'error' });
+        } finally {
+            setAssignmentLoading('');
+        }
+    };
+
     if (loading) return <div className="loading"><div className="spinner"></div> Loading...</div>;
     if (!event) return <div className="empty-state"><p>Event not found</p></div>;
 
     const attendedCount = participants.filter(p => p.attended).length;
     const withPayment = participants.filter(p => p.transactionId).length;
     const attendanceRate = participants.length > 0 ? Math.round((attendedCount / participants.length) * 100) : 0;
+    const creatorId = event.createdBy?._id || event.createdBy;
+    const assignedUserIds = new Set((event.assignedUsers || []).map((user) => user._id || user));
+    const availableAssignees = assignableUsers.filter((user) => !assignedUserIds.has(user._id) && user._id !== creatorId);
+    const allowAssignmentManagement = canManageAssignments(event);
 
     return (
         <div>
@@ -172,6 +247,74 @@ function EventDetail() {
                 <div className="modal-form-actions">
                     <button className="btn-secondary" onClick={() => setShowNotify(false)}>Cancel</button>
                     <button className="btn-primary" onClick={handleSendNotification}>Send to All</button>
+                </div>
+            </Modal>
+
+            <Modal isOpen={showAssignments} onClose={() => setShowAssignments(false)} title="Manage Event Access" size="lg">
+                <div className="form-row">
+                    <div>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--sp-2)' }}>Created By</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                            <strong>{event.createdBy?.name}</strong>
+                            <span>{event.createdBy?.email}</span>
+                            <Badge variant={event.createdBy?.role}>{event.createdBy?.role}</Badge>
+                        </div>
+                    </div>
+                    <div>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--sp-2)' }}>Assign Admin / Sub-Admin</p>
+                        <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
+                            <select value={selectedAssignee} onChange={(e) => setSelectedAssignee(e.target.value)} style={{ minWidth: 260 }}>
+                                <option value="">Select a user</option>
+                                {availableAssignees.map((user) => (
+                                    <option key={user._id} value={user._id}>
+                                        {user.name} ({user.role})
+                                    </option>
+                                ))}
+                            </select>
+                            <button onClick={handleAssignUser} className="btn-primary" disabled={assignmentLoading === 'assign' || availableAssignees.length === 0}>
+                                {assignmentLoading === 'assign' ? 'Assigning...' : 'Assign User'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {availableAssignees.length === 0 && (
+                    <div className="warning-box" style={{ marginTop: 'var(--sp-4)' }}>
+                        All available admins and sub-admins are already assigned to this event.
+                    </div>
+                )}
+
+                <div style={{ marginTop: 'var(--sp-5)' }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 'var(--sp-3)' }}>Assigned Users</p>
+                    <div className="table-responsive">
+                        <table className="data-table">
+                            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                {(event.assignedUsers || []).map((assignedUser) => {
+                                    const isCreator = assignedUser._id === creatorId;
+                                    return (
+                                        <tr key={assignedUser._id}>
+                                            <td>{assignedUser.name}</td>
+                                            <td>{assignedUser.email}</td>
+                                            <td><Badge variant={assignedUser.role}>{assignedUser.role}</Badge></td>
+                                            <td>{isCreator ? 'Creator' : 'Assigned'}</td>
+                                            <td>
+                                                {!isCreator ? (
+                                                    <button
+                                                        onClick={() => handleUnassignUser(assignedUser._id)}
+                                                        className="btn-danger btn-sm"
+                                                        disabled={assignmentLoading === assignedUser._id}
+                                                    >
+                                                        {assignmentLoading === assignedUser._id ? 'Removing...' : 'Remove'}
+                                                    </button>
+                                                ) : '—'}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </Modal>
 

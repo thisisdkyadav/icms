@@ -89,6 +89,19 @@ export const getAllAdmins = async (req, res) => {
   }
 };
 
+// Get admins and sub-admins that can be assigned to events
+export const getAssignableAdmins = async (req, res) => {
+  try {
+    const users = await Admin.find({
+      role: { $in: ['admin', 'subadmin'] }
+    }).select('-password');
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Update admin
 export const updateAdmin = async (req, res) => {
   try {

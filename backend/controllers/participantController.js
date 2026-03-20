@@ -5,6 +5,31 @@ import { generateQRCode } from '../utils/qrGenerator.js';
 import { sendEmail } from '../utils/emailService.js';
 import { generateCertificate } from '../utils/certificateGenerator.js';
 
+const canAccessEvent = (event, user) => {
+  if (user.role === 'superadmin') {
+    return true;
+  }
+
+  const isCreator = event.createdBy.equals(user._id);
+  const isAssigned = event.assignedUsers.some((assignedUser) => assignedUser.equals(user._id));
+
+  return isCreator || isAssigned;
+};
+
+const loadAccessibleEvent = async (eventId, user) => {
+  const event = await Event.findById(eventId).select('name date createdBy assignedUsers');
+
+  if (!event) {
+    return { status: 404, body: { message: 'Event not found' } };
+  }
+
+  if (!canAccessEvent(event, user)) {
+    return { status: 403, body: { message: 'Access denied' } };
+  }
+
+  return { event };
+};
+
 // Import participants from CSV
 export const importFromCSV = async (req, res) => {
   try {
@@ -13,6 +38,11 @@ export const importFromCSV = async (req, res) => {
 
     if (!participants || !Array.isArray(participants)) {
       return res.status(400).json({ message: 'Participants array required' });
+    }
+
+    const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
+    if (!event) {
+      return res.status(status).json(body);
     }
 
     const createdParticipants = [];
@@ -49,6 +79,11 @@ export const importFromCSV = async (req, res) => {
 // Get participants by event
 export const getByEvent = async (req, res) => {
   try {
+    const { event, status, body } = await loadAccessibleEvent(req.params.eventId, req.user);
+    if (!event) {
+      return res.status(status).json(body);
+    }
+
     const participants = await Participant.find({ event: req.params.eventId });
     res.json(participants);
   } catch (error) {
@@ -62,13 +97,17 @@ export const sendQRCodes = async (req, res) => {
     const { eventId } = req.params;
     const { participantIds } = req.body;
 
+    const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
+    if (!event) {
+      return res.status(status).json(body);
+    }
+
     let query = { event: eventId };
     if (participantIds && participantIds.length > 0) {
       query._id = { $in: participantIds };
     }
 
     const participants = await Participant.find(query);
-    const event = await Event.findById(eventId);
     let sentCount = 0;
 
     for (const p of participants) {
@@ -141,9 +180,9 @@ export const sendCertificates = async (req, res) => {
     const { eventId } = req.params;
     const { participantIds } = req.body;
 
-    const event = await Event.findById(eventId);
+    const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(status).json(body);
     }
 
     let query = { event: eventId, attended: true };
@@ -192,9 +231,9 @@ export const sendReceipts = async (req, res) => {
     const { eventId } = req.params;
     const { participantIds } = req.body;
 
-    const event = await Event.findById(eventId);
+    const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(status).json(body);
     }
 
     let query = { event: eventId };
@@ -290,7 +329,10 @@ export const sendNotifications = async (req, res) => {
     const { eventId } = req.params;
     const { participantIds, subject, message } = req.body;
 
-    const event = await Event.findById(eventId);
+    const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
+    if (!event) {
+      return res.status(status).json(body);
+    }
 
     let query = { event: eventId };
     if (participantIds && participantIds.length > 0) {

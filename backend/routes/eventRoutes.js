@@ -14,5 +14,6 @@ router.get('/:id', eventController.getEventById);
 router.put('/:id', eventController.updateEvent);
 router.delete('/:id', adminOrHigher, eventController.deleteEvent);
 router.post('/:id/assign', adminOrHigher, eventController.assignUser);
+router.delete('/:id/assign/:userId', adminOrHigher, eventController.unassignUser);
 
 export default router;
