@@ -137,8 +137,8 @@ function EventDetail() {
     const doImport = async () => {
         if (!importConfirm) return;
         try {
-            await importParticipants(id, importConfirm.data);
-            setToast({ message: `Imported ${importConfirm.count} participants`, type: 'success' });
+            const response = await importParticipants(id, importConfirm.data);
+            setToast({ message: response.data.message, type: 'success' });
             setShowImport(false); loadData();
         } catch { setToast({ message: 'Failed to import', type: 'error' }); }
         finally { setImportConfirm(null); }
@@ -227,7 +227,7 @@ function EventDetail() {
             {/* Import Modal */}
             <Modal isOpen={showImport} onClose={() => setShowImport(false)} title="Import Participants">
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--sp-4)' }}>Upload a CSV file with participant details.</p>
-                <div className="warning-box"><strong>Warning:</strong> Importing will add new participants. Duplicates are matched by email.</div>
+                <div className="warning-box"><strong>Warning:</strong> Duplicate rows are matched by email. Only the first occurrence for each email is imported.</div>
                 <div className="import-actions">
                     <button onClick={downloadTemplate} className="btn-secondary">Download Template</button>
                     <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />

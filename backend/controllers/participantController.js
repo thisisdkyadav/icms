@@ -45,14 +45,38 @@ export const importFromCSV = async (req, res) => {
       return res.status(status).json(body);
     }
 
+    const normalizeEmail = (email) => email.trim().toLowerCase();
+    const existingParticipants = await Participant.find({ event: eventId }).select('email');
+    const existingEmails = new Set(
+      existingParticipants
+        .map((participant) => participant.email)
+        .filter(Boolean)
+        .map(normalizeEmail)
+    );
+
     const createdParticipants = [];
+    const seenEmails = new Set();
+    let skippedDuplicates = 0;
 
     for (const p of participants) {
+      const email = p.email?.trim();
+      if (!email) {
+        continue;
+      }
+
+      const normalizedEmail = normalizeEmail(email);
+      if (seenEmails.has(normalizedEmail) || existingEmails.has(normalizedEmail)) {
+        skippedDuplicates++;
+        continue;
+      }
+
+      seenEmails.add(normalizedEmail);
+
       const qrData = `${eventId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       const participant = new Participant({
         name: p.name,
-        email: p.email,
+        email,
         phone: p.phone || '',
         event: eventId,
         qrCode: qrData,
@@ -68,7 +92,8 @@ export const importFromCSV = async (req, res) => {
     }
 
     res.status(201).json({
-      message: `${createdParticipants.length} participants imported`,
+      message: `${createdParticipants.length} participants imported${skippedDuplicates ? `, ${skippedDuplicates} duplicate email rows skipped` : ''}`,
+      skippedDuplicates,
       participants: createdParticipants
     });
   } catch (error) {
