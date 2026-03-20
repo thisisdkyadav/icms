@@ -26,29 +26,29 @@ A web-based system to manage academic conferences, workshops, and seminars.
 ---
 
 ## User roles & permissions
-- Super Admin
-  Full system control
-  Can create and manage Admins and Subadmins
-- Admin
-  Can create and manage events
-  Can manage participants and attendance
-- Subadmin
-  Cannot create events
+### Super Admin
+  - Full system control
+  - Can create and manage Admins and Subadmins
+### Admin
+ - Can create and manage events
+ - Can manage participants and attendance
+### Subadmin
+ - Cannot create events
 
 Can manage events and attendance assigned to them
 ## System Workflow
- - Event Creation
-   Admin creates an event with necessary details.
- - Participant Import
-   Upload CSV file containing participants who have registered and paid.
- - Receipt Generation
-   System generates and sends receipts via email.
- - QR Code Distribution
-   Unique QR codes are generated and emailed to participants.
- - Attendance Marking
-   Admin/Subadmin scans QR or marks attendance manually via dashboard.
- - Certificate Distribution
-   Certificates are automatically generated and emailed after attendance.
+### Event Creation
+  - Admin creates an event with necessary details.
+### Participant Import
+  - Upload CSV file containing participants who have registered and paid.
+### Receipt Generation
+  - System generates and sends receipts via email.
+### QR Code Distribution
+  - Unique QR codes are generated and emailed to participants.
+### Attendance Marking
+  - Admin/Subadmin scans QR or marks attendance manually via dashboard.
+### Certificate Distribution
+  - Certificates are automatically generated and emailed after attendance.
    
 ## DEMO Video
 ---
