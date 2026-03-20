@@ -93,10 +93,10 @@ In-House-Conference-Management-System/
 - Node.js (v18 or higher)
 - MongoDB (local or Atlas)
 - npm or yarn
-
+---
 ###  Windows Setup
 
-### 1. Install Node.js
+#### 1. Install Node.js
 Download and install from: https://nodejs.org  
 
 Verify:
@@ -105,25 +105,18 @@ node -v
 npm -v
 ```
 
-### 2. Install MongoDB
+#### 2. Install MongoDB
 
-#### Option A: MongoDB Atlas (Recommended)
 - Go to https://www.mongodb.com/atlas
 - Create a free cluster
 - Create user & password
 - Get connection string:
 ```bash
-mongodb+srv://<user>:<password>@cluster.mongodb.net/icms
+MONGODB_URI = "mongodb+srv://<user>:<password>@cluster.mongodb.net/icms"
 ```
 
-#### Option B: Local MongoDB
-- Install MongoDB Community Server
-- Open:
-  ```bash
-  mongosh
-  ```
 
-### Backend Setup
+#### Backend Setup
 ```bash
 cd backend
 npm install
@@ -131,22 +124,27 @@ cp .env.example .env    # Create .env file
 notepad .env            # Update the values
 npm run dev             # Starts server on port 5000
 ```
-### Frontend Setup
+#### Frontend Setup
 ```bash
 cd frontend
 npm install
 npm install --save @fortawesome/react-fontawesome @fortawesome/free-solid-svg-icons @fortawesome/fontawesome-svg-core
 npm run dev             # Starts dev server on port 5173
 ```
+#### Note: 
+If npm run dev fails → install nodemon:
+```bash
+npm install -g nodemon
+```
 ----
 ### macOS Setup
 
-### 1. Install Homebrew
+#### 1. Install Homebrew
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### 2. Install Node.js
+#### 2. Install Node.js
 ```bash
 brew install node
 ```
@@ -156,15 +154,8 @@ node -v
 npm -v
 ```
 
-### 3. Install MongoDB
-#### Option A: MongoDB Atlas (Recommended)
+#### 3. Install MongoDB
 (Same as Windows)
-#### Option B: Local MongoDB
-```bash
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
-```
 
 #### Backend Setup
 ```bash
