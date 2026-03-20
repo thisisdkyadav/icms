@@ -59,6 +59,7 @@ A web-based system to manage academic conferences, workshops, and seminars.
     
 ## DEMO Video
 ---
+[![Watch the demo](https://img.youtube.com/vi/R4lSLZqimuE/0.jpg)](https://www.youtube.com/watch?v=R4lSLZqimuE)
 ## Project Structure
 
 ```
