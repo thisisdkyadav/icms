@@ -41,6 +41,16 @@ function Events() {
     const handleFormSubmit = (e) => {
         e.preventDefault(); setError('');
         if (!formData.name.trim() || !formData.date) { setError('Name and date are required'); return; }
+        
+        const isDuplicate = events.some(
+            (e) => e.name.toLowerCase().trim() === formData.name.toLowerCase().trim()
+        );
+
+        if (isDuplicate) {
+            setError('Event name already exists');
+            return;
+        }
+
         setCreateConfirm(true);
     };
 
