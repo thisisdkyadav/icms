@@ -94,8 +94,8 @@ function EventDetail() {
     };
 
     const downloadTemplate = () => {
-        const headers = 'name,email,phone,transactionId,transactionTime,amount,paymentMode';
-        const example = 'John Doe,john@example.com,9876543210,TXN123456,2026-02-09 10:30,500,UPI';
+        const headers = 'name,email,department,phone,transactionId,transactionTime,amount,paymentMode';
+        const example = 'John Doe,john@example.com,CE,9876543210,TXN123456,2026-02-09 10:30,500,UPI';
         const blob = new Blob([`${headers}\n${example}`], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = 'participants_template.csv'; a.click();
@@ -109,7 +109,7 @@ function EventDetail() {
             try {
                 const lines = event.target.result.split('\n').filter(l => l.trim());
                 if (lines.length < 2) { setToast({ message: 'CSV file is empty', type: 'error' }); return; }
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const headers = lines[0].split(',').map(h => h.trim());
                 const parsed = [];
                 for (let i = 1; i < lines.length; i++) {
                     const values = lines[i].split(',').map(v => v.trim());
@@ -117,17 +117,45 @@ function EventDetail() {
                     const p = {};
                     headers.forEach((h, idx) => {
                         const v = values[idx] || '';
-                        if (h === 'name') p.name = v;
-                        else if (h === 'email') p.email = v;
-                        else if (h === 'phone' || h === 'mobile') p.phone = v;
-                        else if (h.includes('transactionid') || h === 'txn_id') p.transactionId = v;
-                        else if (h.includes('transactiontime') || h === 'txn_time') p.transactionTime = v;
-                        else if (h === 'amount') p.amount = v;
-                        else if (h.includes('paymentmode') || h === 'mode') p.paymentMode = v;
+
+                        const hNorm = h.toLowerCase().replace(/[^a-z]/g, '');
+
+                        if (hNorm.includes('name')) p.name = v;
+
+                        else if (hNorm.includes('email')) p.email = v;
+
+                        else if (
+                            hNorm.includes('department') ||
+                            hNorm.includes('dept') ||
+                            hNorm.includes('branch')
+                        ) p.department = v;
+
+                        else if (
+                            hNorm.includes('phone') ||
+                            hNorm.includes('mobile') ||
+                            hNorm.includes('contact')
+                        ) p.phone = v;
+
+                        else if (hNorm.includes('transactionid') || hNorm.includes('txnid'))
+                            p.transactionId = v;
+
+                        else if (hNorm.includes('transactiontime') || hNorm.includes('txntime'))
+                            p.transactionTime = v;
+
+                        else if (hNorm.includes('amount'))
+                            p.amount = v;
+
+                        else if (hNorm.includes('paymentmode') || hNorm.includes('mode'))
+                            p.paymentMode = v;
+
+                        else {
+                            if (!p.dataFields) p.dataFields = {};
+                            p.dataFields[h] = v;
+                        }
                     });
-                    if (p.name && p.email) parsed.push(p);
+                    if (p.name && p.email&& p.department) parsed.push(p);
                 }
-                if (parsed.length === 0) { setToast({ message: 'No valid participants found', type: 'error' }); return; }
+                if (parsed.length === 0) { setToast({ message: 'No valid participants found(name, email, department required)', type: 'error' }); return; }
                 setImportConfirm({ count: parsed.length, data: parsed });
             } catch { setToast({ message: 'Failed to parse CSV', type: 'error' }); }
         };
@@ -203,7 +231,14 @@ function EventDetail() {
     const assignedUserIds = new Set((event.assignedUsers || []).map((user) => user._id || user));
     const availableAssignees = assignableUsers.filter((user) => !assignedUserIds.has(user._id) && user._id !== creatorId);
     const allowAssignmentManagement = canManageAssignments(event);
-
+     
+    const extraColumns = Array.from(
+        new Set(
+            participants.flatMap(p =>
+            p.dataFields ? Object.keys(p.dataFields).filter(col => col && col.trim() !== '') : []
+            )
+        )
+    );
     return (
         <div>
             <div className="action-buttons">
@@ -234,7 +269,7 @@ function EventDetail() {
                     <button onClick={() => fileInputRef.current?.click()} className="btn-primary">Upload CSV File</button>
                 </div>
                 <div className="template-info">
-                    <h4>Required: name, email</h4>
+                    <h4>Required: name, email, department</h4>
                     <h4>Optional: phone, transactionId, transactionTime, amount, paymentMode</h4>
                 </div>
             </Modal>
@@ -331,13 +366,25 @@ function EventDetail() {
                 <Card noPad>
                     <div className="table-responsive">
                         <table className="data-table">
-                            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Transaction ID</th><th>Amount</th><th>Status</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Department</th>
+                                    <th>Phone</th>
+                                    <th>Transaction ID</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    {extraColumns.map(col => <th key={col}>{col}</th>)}
+                                </tr>
+                            </thead>
                             <tbody>
                                 {participants.map(p => (
                                     <tr key={p._id}>
-                                        <td>{p.name}</td><td>{p.email}</td><td>{p.phone || '—'}</td>
+                                        <td>{p.name}</td><td>{p.email}</td><td>{p.department}</td><td>{p.phone || '—'}</td>
                                         <td>{p.transactionId || '—'}</td><td>{p.amount ? `₹${p.amount}` : '—'}</td>
                                         <td><Badge variant={p.attended ? 'success' : 'default'}>{p.attended ? 'Attended' : 'Pending'}</Badge></td>
+                                        {extraColumns.map(col => <td key={col}>{p.dataFields?.[col] || '—'}</td>)}
                                     </tr>
                                 ))}
                             </tbody>

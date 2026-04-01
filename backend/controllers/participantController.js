@@ -57,10 +57,12 @@ export const importFromCSV = async (req, res) => {
     const createdParticipants = [];
     const seenEmails = new Set();
     let skippedDuplicates = 0;
+    let skippedInvalid = 0; 
 
     for (const p of participants) {
       const email = p.email?.trim();
-      if (!email) {
+      if (!p.name || !email || !p.department) {
+        skippedInvalid++;   
         continue;
       }
 
@@ -77,6 +79,7 @@ export const importFromCSV = async (req, res) => {
       const participant = new Participant({
         name: p.name,
         email,
+        department: p.department, 
         phone: p.phone || '',
         event: eventId,
         qrCode: qrData,
@@ -92,8 +95,13 @@ export const importFromCSV = async (req, res) => {
     }
 
     res.status(201).json({
-      message: `${createdParticipants.length} participants imported${skippedDuplicates ? `, ${skippedDuplicates} duplicate email rows skipped` : ''}`,
+      message: `${createdParticipants.length} participants imported${
+        skippedDuplicates ? `, ${skippedDuplicates} duplicate email rows skipped` : ''
+      }${
+        skippedInvalid ? `, ${skippedInvalid} invalid rows skipped` : ''
+      }`,
       skippedDuplicates,
+      skippedInvalid,
       participants: createdParticipants
     });
   } catch (error) {
@@ -257,10 +265,9 @@ export const sendReceipts = async (req, res) => {
     const { participantIds } = req.body;
 
     const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
-    if (!event) {
-      return res.status(status).json(body);
-    }
+    if (!event) return res.status(status).json(body);
 
+    // Build query
     let query = { event: eventId };
     if (participantIds && participantIds.length > 0) {
       query._id = { $in: participantIds };
@@ -270,7 +277,7 @@ export const sendReceipts = async (req, res) => {
     let sentCount = 0;
 
     for (const p of participants) {
-      if (!p.transactionId) continue; // Skip if no payment info
+      if (!p.transactionId) continue; // Skip participants without payment
 
       try {
         await sendEmail({
@@ -279,10 +286,10 @@ export const sendReceipts = async (req, res) => {
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">Payment Receipt</h2>
-              
+
               <p>Dear <strong>${p.name}</strong>,</p>
               <p>Thank you for your payment for <strong>${event.name}</strong>.</p>
-              
+
               <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                 <tr style="background: #f8f9fa;">
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Event</strong></td>
@@ -296,38 +303,39 @@ export const sendReceipts = async (req, res) => {
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Email</strong></td>
                   <td style="padding: 10px; border: 1px solid #ddd;">${p.email}</td>
                 </tr>
-                ${p.phone ? `
                 <tr>
+                  <td style="padding: 10px; border: 1px solid #ddd;"><strong>Department</strong></td>
+                  <td style="padding: 10px; border: 1px solid #ddd;">${p.department}</td>
+                </tr>
+                ${p.phone ? `
+                <tr style="background: #f8f9fa;">
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Phone</strong></td>
                   <td style="padding: 10px; border: 1px solid #ddd;">${p.phone}</td>
-                </tr>
-                ` : ''}
-                <tr style="background: #f8f9fa;">
+                </tr>` : ''}
+                <tr>
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Transaction ID</strong></td>
                   <td style="padding: 10px; border: 1px solid #ddd;">${p.transactionId}</td>
                 </tr>
                 ${p.transactionTime ? `
-                <tr>
+                <tr style="background: #f8f9fa;">
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Transaction Time</strong></td>
                   <td style="padding: 10px; border: 1px solid #ddd;">${p.transactionTime}</td>
-                </tr>
-                ` : ''}
+                </tr>` : ''}
                 ${p.amount ? `
-                <tr style="background: #f8f9fa;">
+                <tr>
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Amount</strong></td>
                   <td style="padding: 10px; border: 1px solid #ddd;">₹${p.amount}</td>
-                </tr>
-                ` : ''}
+                </tr>` : ''}
                 ${p.paymentMode ? `
-                <tr>
+                <tr style="background: #f8f9fa;">
                   <td style="padding: 10px; border: 1px solid #ddd;"><strong>Payment Mode</strong></td>
                   <td style="padding: 10px; border: 1px solid #ddd;">${p.paymentMode}</td>
-                </tr>
-                ` : ''}
+                </tr>` : ''}
+
               </table>
-              
+
               <p style="color: #27ae60; font-weight: bold;">✓ Payment Confirmed</p>
-              
+
               <p>Best regards,<br>ICMS Team</p>
             </div>
           `
@@ -347,6 +355,7 @@ export const sendReceipts = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 // Send notifications
 export const sendNotifications = async (req, res) => {
