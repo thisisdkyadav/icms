@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { useMemo } from 'react';
 import {
     getEvent,
     getParticipants,
@@ -45,6 +46,18 @@ function EventDetail() {
     const [confirmAction, setConfirmAction] = useState(null);
     const [importConfirm, setImportConfirm] = useState(null);
     const fileInputRef = useRef(null);
+
+    const extraColumns = useMemo(() => 
+        Array.from(
+            new Set(
+                participants.flatMap(p =>
+                    p.dataFields && typeof p.dataFields === 'object'
+                        ? Object.keys(p.dataFields).filter(col => col && col.trim() !== '')
+                        : []
+                )
+            )
+        ).sort(),
+    [participants]);
 
     useEffect(() => { loadData(); }, [id]);
     useEffect(() => {
@@ -135,9 +148,12 @@ function EventDetail() {
                 if (fieldName) {
                     parsed[fieldName] = value ? String(value).trim() : '';
                 } else {
-                    // Store unmapped fields
-                    if (!parsed.dataFields) parsed.dataFields = {};
-                    parsed.dataFields[key] = value ? String(value).trim() : '';
+                    const cleanKey = normalizedKey;
+
+                    if (cleanKey) {
+                        if (!parsed.dataFields) parsed.dataFields = {};
+                        parsed.dataFields[cleanKey] = value ? String(value).trim() : '';
+                    }
                 }
             });
 
@@ -167,9 +183,12 @@ function EventDetail() {
                     if (fieldName) {
                         p[fieldName] = v;
                     } else {
-                        // Store unmapped fields
-                        if (!p.dataFields) p.dataFields = {};
-                        p.dataFields[h] = v;
+                        const cleanKey = normalizedHeader;
+
+                        if (cleanKey) {
+                            if (!p.dataFields) p.dataFields = {};
+                            p.dataFields[cleanKey] = v;
+                        }
                     }
                 });
 
@@ -206,7 +225,7 @@ function EventDetail() {
                     const workbook = XLSX.read(event.target.result, { type: 'binary' });
                     const worksheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[worksheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
                     if (!jsonData || jsonData.length === 0) {
                         setToast({ message: 'Spreadsheet is empty', type: 'error' });
@@ -322,6 +341,7 @@ function EventDetail() {
     const assignedUserIds = new Set((event.assignedUsers || []).map((user) => user._id || user));
     const availableAssignees = assignableUsers.filter((user) => !assignedUserIds.has(user._id) && user._id !== creatorId);
     const allowAssignmentManagement = canManageAssignments(event);
+
 
     return (
         <div>
@@ -459,13 +479,18 @@ function EventDetail() {
                 <Card noPad>
                     <div className="table-responsive">
                         <table className="data-table">
-                            <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Phone</th><th>Transaction ID</th><th>Amount</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Phone</th><th>Transaction ID</th><th>Amount</th><th>Status</th>{extraColumns.map(col => <th key={col}>{col}</th>)}</tr></thead>
                             <tbody>
                                 {participants.map(p => (
                                     <tr key={p._id}>
                                         <td>{p.name}</td><td>{p.email}</td><td>{p.department || '—'}</td><td>{p.phone || '—'}</td>
                                         <td>{p.transactionId || '—'}</td><td>{p.amount ? `₹${p.amount}` : '—'}</td>
                                         <td><Badge variant={p.attended ? 'success' : 'default'}>{p.attended ? 'Attended' : 'Pending'}</Badge></td>
+                                        {extraColumns.map(col => (
+                                            <td key={col}>
+                                                {p.dataFields?.[col] ? p.dataFields[col] : '—'}
+                                            </td>
+                                        ))}
                                     </tr>
                                 ))}
                             </tbody>

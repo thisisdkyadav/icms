@@ -6,12 +6,16 @@ import { sendEmail } from '../utils/emailService.js';
 import { generateCertificate } from '../utils/certificateGenerator.js';
 
 const canAccessEvent = (event, user) => {
-  if (user.role === 'superadmin') {
-    return true;
-  }
+  if (user.role === 'superadmin') return true;
 
-  const isCreator = event.createdBy.equals(user._id);
-  const isAssigned = event.assignedUsers.some((assignedUser) => assignedUser.equals(user._id));
+  const isCreator =
+    event.createdBy?.toString() === user._id?.toString();
+
+  const isAssigned =
+    event.assignedUsers?.some(
+      (assignedUser) =>
+        assignedUser?.toString() === user._id?.toString()
+    ) || false;
 
   return isCreator || isAssigned;
 };
@@ -34,7 +38,7 @@ const loadAccessibleEvent = async (eventId, user) => {
 export const importFromCSV = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { participants } = req.body;
+    const { participants = [] } = req.body;
 
     if (!participants || !Array.isArray(participants)) {
       return res.status(400).json({ message: 'Participants array required' });
