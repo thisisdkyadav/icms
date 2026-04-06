@@ -50,6 +50,9 @@ export const createEvent = async (req, res) => {
     const populatedEvent = await Event.findById(event._id).populate(EVENT_POPULATION);
     res.status(201).json(populatedEvent);
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Event with this name already exists' });
+    }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

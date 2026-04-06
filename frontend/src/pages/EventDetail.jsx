@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import { useMemo } from 'react';
 import {
     getEvent,
     getParticipants,
@@ -45,6 +47,18 @@ function EventDetail() {
     const [importConfirm, setImportConfirm] = useState(null);
     const fileInputRef = useRef(null);
 
+    const extraColumns = useMemo(() => 
+        Array.from(
+            new Set(
+                participants.flatMap(p =>
+                    p.dataFields && typeof p.dataFields === 'object'
+                        ? Object.keys(p.dataFields).filter(col => col && col.trim() !== '')
+                        : []
+                )
+            )
+        ).sort(),
+    [participants]);
+
     useEffect(() => { loadData(); }, [id]);
     useEffect(() => {
         if (event && canManageAssignments(event)) {
@@ -60,7 +74,7 @@ function EventDetail() {
                 `${new Date(event.date).toLocaleDateString()} — ${participants.length} participants`,
                 <>
                     {canManage && <button onClick={() => setShowAssignments(true)} className="btn-secondary btn-sm" disabled={!!actionLoading || !!assignmentLoading}>Manage Access</button>}
-                    <button onClick={() => setShowImport(true)} className="btn-secondary btn-sm" disabled={!!actionLoading}>Import CSV</button>
+                    <button onClick={() => setShowImport(true)} className="btn-secondary btn-sm" disabled={!!actionLoading}>Import Participants</button>
                     <button onClick={() => setShowNotify(true)} className="btn-secondary btn-sm" disabled={!!actionLoading}>Notify</button>
                     <button onClick={() => navigate('/events')} className="btn-ghost btn-sm">Back</button>
                 </>
@@ -94,44 +108,166 @@ function EventDetail() {
     };
 
     const downloadTemplate = () => {
-        const headers = 'name,email,phone,transactionId,transactionTime,amount,paymentMode';
-        const example = 'John Doe,john@example.com,9876543210,TXN123456,2026-02-09 10:30,500,UPI';
+        const headers = 'name,email,department,phone,transactionId,transactionTime,amount,paymentMode';
+        const example = 'John Doe,john@example.com,Engineering,9876543210,TXN123456,2026-02-09 10:30,500,UPI';
         const blob = new Blob([`${headers}\n${example}`], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = 'participants_template.csv'; a.click();
         URL.revokeObjectURL(url);
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const lines = event.target.result.split('\n').filter(l => l.trim());
-                if (lines.length < 2) { setToast({ message: 'CSV file is empty', type: 'error' }); return; }
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                const parsed = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
-                    if (values.length < 2) continue;
-                    const p = {};
-                    headers.forEach((h, idx) => {
-                        const v = values[idx] || '';
-                        if (h === 'name') p.name = v;
-                        else if (h === 'email') p.email = v;
-                        else if (h === 'phone' || h === 'mobile') p.phone = v;
-                        else if (h.includes('transactionid') || h === 'txn_id') p.transactionId = v;
-                        else if (h.includes('transactiontime') || h === 'txn_time') p.transactionTime = v;
-                        else if (h === 'amount') p.amount = v;
-                        else if (h.includes('paymentmode') || h === 'mode') p.paymentMode = v;
-                    });
-                    if (p.name && p.email) parsed.push(p);
+    // Normalize column header names
+    const normalizeHeaderName = (headerName) => {
+        if (!headerName) return '';
+        const normalized = headerName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalized;
+    };
+
+    // Map normalized header to field name
+    const mapHeaderToField = (normalizedHeader) => {
+        if (normalizedHeader.includes('name')) return 'name';
+        if (normalizedHeader.includes('email')) return 'email';
+        if (normalizedHeader.includes('department') || normalizedHeader.includes('dept') || normalizedHeader.includes('branch')) return 'department';
+        if (normalizedHeader.includes('phone') || normalizedHeader.includes('mobile') || normalizedHeader.includes('contact')) return 'phone';
+        if (normalizedHeader.includes('transactionid') || normalizedHeader.includes('txnid')) return 'transactionId';
+        if (normalizedHeader.includes('transactiontime') || normalizedHeader.includes('txntime')) return 'transactionTime';
+        if (normalizedHeader.includes('amount')) return 'amount';
+        if (normalizedHeader.includes('paymentmode') || normalizedHeader.includes('mode')) return 'paymentMode';
+        return null;
+    };
+
+    // Parse spreadsheet data (Excel, ODS)
+    const parseSpreadsheetData = (jsonData) => {
+        return jsonData.map((row) => {
+            const parsed = {};
+
+            Object.entries(row).forEach(([key, value]) => {
+                const normalizedKey = normalizeHeaderName(key);
+                const fieldName = mapHeaderToField(normalizedKey);
+
+                if (fieldName) {
+                    parsed[fieldName] = value ? String(value).trim() : '';
+                } else {
+                    const cleanKey = normalizedKey;
+
+                    if (cleanKey) {
+                        if (!parsed.dataFields) parsed.dataFields = {};
+                        parsed.dataFields[cleanKey] = value ? String(value).trim() : '';
+                    }
                 }
-                if (parsed.length === 0) { setToast({ message: 'No valid participants found', type: 'error' }); return; }
-                setImportConfirm({ count: parsed.length, data: parsed });
-            } catch { setToast({ message: 'Failed to parse CSV', type: 'error' }); }
-        };
-        reader.readAsText(file); e.target.value = '';
+            });
+
+            return parsed;
+        }).filter(p => p.name && p.email && p.department);
+    };
+
+    // Parse CSV text
+    const parseCSVText = (csvText) => {
+        try {
+            const lines = csvText.split('\n').filter(l => l.trim());
+            if (lines.length < 2) return null;
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const parsed = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                if (values.length < 2) continue;
+
+                const p = {};
+                headers.forEach((h, idx) => {
+                    const v = values[idx] || '';
+                    const normalizedHeader = normalizeHeaderName(h);
+                    const fieldName = mapHeaderToField(normalizedHeader);
+
+                    if (fieldName) {
+                        p[fieldName] = v;
+                    } else {
+                        const cleanKey = normalizedHeader;
+
+                        if (cleanKey) {
+                            if (!p.dataFields) p.dataFields = {};
+                            p.dataFields[cleanKey] = v;
+                        }
+                    }
+                });
+
+                if (p.name && p.email && p.department) parsed.push(p);
+            }
+
+            return parsed.length > 0 ? parsed : null;
+        } catch (error) {
+            console.error('CSV parse error:', error);
+            return null;
+        }
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        const isExcel = ['xlsx', 'xltx', 'xls'].includes(fileExtension);
+        const isODS = fileExtension === 'ods';
+        const isCSV = fileExtension === 'csv';
+
+        if (!isCSV && !isExcel && !isODS) {
+            setToast({ message: 'Please upload a CSV, XLSX, XLTX, XLS, or ODS file', type: 'error' });
+            return;
+        }
+
+        const reader = new FileReader();
+
+        if (isExcel || isODS) {
+            // For Excel and ODS files
+            reader.onload = async (event) => {
+                try {
+                    const workbook = XLSX.read(event.target.result, { type: 'binary' });
+                    const worksheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[worksheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+                    if (!jsonData || jsonData.length === 0) {
+                        setToast({ message: 'Spreadsheet is empty', type: 'error' });
+                        return;
+                    }
+
+                    const parsed = parseSpreadsheetData(jsonData);
+
+                    if (parsed.length === 0) {
+                        setToast({ message: 'No valid participants found (name, email, department required)', type: 'error' });
+                        return;
+                    }
+
+                    setImportConfirm({ count: parsed.length, data: parsed });
+                } catch (error) {
+                    console.error('File parse error:', error);
+                    setToast({ message: `Failed to parse ${fileExtension.toUpperCase()} file`, type: 'error' });
+                }
+            };
+            reader.readAsBinaryString(file);
+        } else if (isCSV) {
+            // For CSV files
+            reader.onload = async (event) => {
+                try {
+                    const csvText = event.target.result;
+                    const parsed = parseCSVText(csvText);
+
+                    if (!parsed) {
+                        setToast({ message: 'CSV file is empty or no valid participants found (name, email, department required)', type: 'error' });
+                        return;
+                    }
+
+                    setImportConfirm({ count: parsed.length, data: parsed });
+                } catch (error) {
+                    console.error('CSV parse error:', error);
+                    setToast({ message: 'Failed to parse CSV file', type: 'error' });
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        e.target.value = '';
     };
 
     const doImport = async () => {
@@ -139,7 +275,8 @@ function EventDetail() {
         try {
             const response = await importParticipants(id, importConfirm.data);
             setToast({ message: response.data.message, type: 'success' });
-            setShowImport(false); loadData();
+            setShowImport(false);
+            loadData();
         } catch { setToast({ message: 'Failed to import', type: 'error' }); }
         finally { setImportConfirm(null); }
     };
@@ -149,7 +286,8 @@ function EventDetail() {
     const executeAction = async () => {
         if (!confirmAction) return;
         const { action, label } = confirmAction;
-        setConfirmAction(null); setActionLoading(label);
+        setConfirmAction(null);
+        setActionLoading(label);
         try { const res = await action(id); setToast({ message: res.data.message, type: 'success' }); }
         catch { setToast({ message: `Failed: ${label}`, type: 'error' }); }
         finally { setActionLoading(''); }
@@ -204,6 +342,7 @@ function EventDetail() {
     const availableAssignees = assignableUsers.filter((user) => !assignedUserIds.has(user._id) && user._id !== creatorId);
     const allowAssignmentManagement = canManageAssignments(event);
 
+
     return (
         <div>
             <div className="action-buttons">
@@ -226,16 +365,25 @@ function EventDetail() {
 
             {/* Import Modal */}
             <Modal isOpen={showImport} onClose={() => setShowImport(false)} title="Import Participants">
-                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--sp-4)' }}>Upload a CSV file with participant details.</p>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--sp-4)' }}>Upload a spreadsheet or CSV file with participant details.</p>
                 <div className="warning-box"><strong>Warning:</strong> Duplicate rows are matched by email. Only the first occurrence for each email is imported.</div>
                 <div className="import-actions">
-                    <button onClick={downloadTemplate} className="btn-secondary">Download Template</button>
-                    <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
-                    <button onClick={() => fileInputRef.current?.click()} className="btn-primary">Upload CSV File</button>
+                    <button onClick={downloadTemplate} className="btn-secondary">Download CSV Template</button>
+                    <input type="file" accept=".csv,.xlsx,.xltx,.xls,.ods" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
+                    <button onClick={() => fileInputRef.current?.click()} className="btn-primary">Upload File</button>
                 </div>
                 <div className="template-info">
-                    <h4>Required: name, email</h4>
-                    <h4>Optional: phone, transactionId, transactionTime, amount, paymentMode</h4>
+                    <h4>Supported Formats</h4>
+                    <ul style={{ margin: '8px 0', paddingLeft: '20px', fontSize: 'var(--text-sm)' }}>
+                        <li>CSV (.csv)</li>
+                        <li>Excel (.xlsx, .xltx, .xls)</li>
+                        <li>LibreOffice Calc (.ods)</li>
+                    </ul>
+                    <h4 style={{ marginTop: '12px' }}>Column Names (case-insensitive)</h4>
+                    <ul style={{ margin: '8px 0', paddingLeft: '20px', fontSize: 'var(--text-sm)' }}>
+                        <li><strong>Required:</strong> name, email, department</li>
+                        <li><strong>Optional:</strong> phone (mobile, contact), transactionId (txn_id, txnid), transactionTime (txn_time, txntime), amount, paymentMode (mode)</li>
+                    </ul>
                 </div>
             </Modal>
 
@@ -325,19 +473,24 @@ function EventDetail() {
             {participants.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state__icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg></div>
-                    <p>No participants yet. Import from CSV above.</p>
+                    <p>No participants yet. Import from a file above.</p>
                 </div>
             ) : (
                 <Card noPad>
                     <div className="table-responsive">
                         <table className="data-table">
-                            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Transaction ID</th><th>Amount</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Phone</th><th>Transaction ID</th><th>Amount</th><th>Status</th>{extraColumns.map(col => <th key={col}>{col}</th>)}</tr></thead>
                             <tbody>
                                 {participants.map(p => (
                                     <tr key={p._id}>
-                                        <td>{p.name}</td><td>{p.email}</td><td>{p.phone || '—'}</td>
+                                        <td>{p.name}</td><td>{p.email}</td><td>{p.department || '—'}</td><td>{p.phone || '—'}</td>
                                         <td>{p.transactionId || '—'}</td><td>{p.amount ? `₹${p.amount}` : '—'}</td>
                                         <td><Badge variant={p.attended ? 'success' : 'default'}>{p.attended ? 'Attended' : 'Pending'}</Badge></td>
+                                        {extraColumns.map(col => (
+                                            <td key={col}>
+                                                {p.dataFields?.[col] ? p.dataFields[col] : '—'}
+                                            </td>
+                                        ))}
                                     </tr>
                                 ))}
                             </tbody>
