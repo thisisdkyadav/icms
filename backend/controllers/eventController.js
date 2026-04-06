@@ -1,5 +1,6 @@
 import Event from '../models/Event.js';
 import Admin from '../models/Admin.js';
+import Participant from '../models/Participant.js';
 
 const EVENT_POPULATION = [
   { path: 'createdBy', select: 'name email role' },
@@ -134,9 +135,14 @@ export const deleteEvent = async (req, res) => {
       return res.status(403).json({ message: 'Only the event creator can delete this event' });
     }
 
+    const deletedParticipants = await Participant.deleteMany({ event: event._id });
     await event.deleteOne();
 
-    res.json({ message: 'Event deleted successfully' });
+    res.json({
+      message: 'Event and related data deleted successfully',
+      deletedEventId: event._id,
+      deletedParticipants: deletedParticipants.deletedCount || 0
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
