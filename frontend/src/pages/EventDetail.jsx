@@ -6,6 +6,7 @@ import {
     getAssignableUsers,
     importParticipants,
     sendQRCodes,
+    previewCertificate,
     sendCertificates,
     sendReceipts,
     sendNotifications,
@@ -19,6 +20,7 @@ import Badge from '../components/Badge';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Toast from '../components/Toast';
+import CertificateConfigModal from '../components/CertificateConfigModal';
 
 const IconUsers = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>;
 const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>;
@@ -37,9 +39,11 @@ function EventDetail() {
     const [showImport, setShowImport] = useState(false);
     const [showNotify, setShowNotify] = useState(false);
     const [showAssignments, setShowAssignments] = useState(false);
+    const [showCertificateConfig, setShowCertificateConfig] = useState(false);
     const [notification, setNotification] = useState({ subject: '', message: '' });
     const [toast, setToast] = useState(null);
     const [actionLoading, setActionLoading] = useState('');
+    const [certificateActionLoading, setCertificateActionLoading] = useState('');
     const [assignmentLoading, setAssignmentLoading] = useState('');
     const [confirmAction, setConfirmAction] = useState(null);
     const [importConfirm, setImportConfirm] = useState(null);
@@ -161,6 +165,51 @@ function EventDetail() {
         catch { setToast({ message: 'Failed to send notifications', type: 'error' }); }
     };
 
+    const handlePreviewCertificate = async ({ mode, participantId, certificateConfig }) => {
+        setCertificateActionLoading(mode);
+
+        try {
+            const response = await previewCertificate(id, { participantId, certificateConfig });
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const fileName = `certificate_preview_${id}.pdf`;
+            const blobUrl = URL.createObjectURL(blob);
+
+            if (mode === 'view') {
+                const openedWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+                if (!openedWindow) {
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = fileName;
+                    link.click();
+                }
+            } else {
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = fileName;
+                link.click();
+            }
+
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        } catch {
+            setToast({ message: 'Failed to generate preview certificate', type: 'error' });
+        } finally {
+            setCertificateActionLoading('');
+        }
+    };
+
+    const handleSendCertificates = async (certificateConfig) => {
+        setCertificateActionLoading('send');
+        try {
+            const response = await sendCertificates(id, { certificateConfig });
+            setToast({ message: response.data.message, type: 'success' });
+            setShowCertificateConfig(false);
+        } catch {
+            setToast({ message: 'Failed to send certificates', type: 'error' });
+        } finally {
+            setCertificateActionLoading('');
+        }
+    };
+
     const handleAssignUser = async () => {
         if (!selectedAssignee) {
             setToast({ message: 'Select an admin or sub-admin first', type: 'error' });
@@ -202,7 +251,6 @@ function EventDetail() {
     const creatorId = event.createdBy?._id || event.createdBy;
     const assignedUserIds = new Set((event.assignedUsers || []).map((user) => user._id || user));
     const availableAssignees = assignableUsers.filter((user) => !assignedUserIds.has(user._id) && user._id !== creatorId);
-    const allowAssignmentManagement = canManageAssignments(event);
 
     return (
         <div>
@@ -213,8 +261,8 @@ function EventDetail() {
                 <button onClick={() => requestAction(sendReceipts, 'Receipts', `This will send receipt emails to ${withPayment} participants with payment data.`)} className="btn-secondary" disabled={!!actionLoading || withPayment === 0}>
                     {actionLoading === 'Receipts' ? 'Sending...' : 'Send Receipts'}
                 </button>
-                <button onClick={() => requestAction(sendCertificates, 'Certificates', `This will send certificates to ${attendedCount} attended participants. Make sure attendance is finalized.`)} className="btn-secondary" disabled={!!actionLoading || attendedCount === 0}>
-                    {actionLoading === 'Certificates' ? 'Sending...' : 'Send Certificates'}
+                <button onClick={() => setShowCertificateConfig(true)} className="btn-secondary" disabled={!!actionLoading || !!certificateActionLoading || attendedCount === 0}>
+                    {certificateActionLoading === 'send' ? 'Sending...' : 'Send Certificates'}
                 </button>
             </div>
 
@@ -317,6 +365,16 @@ function EventDetail() {
                     </div>
                 </div>
             </Modal>
+
+            <CertificateConfigModal
+                isOpen={showCertificateConfig}
+                onClose={() => setShowCertificateConfig(false)}
+                event={event}
+                participants={participants}
+                onSend={handleSendCertificates}
+                onPreview={handlePreviewCertificate}
+                actionLoading={certificateActionLoading}
+            />
 
             <ConfirmDialog isOpen={!!confirmAction} onClose={() => setConfirmAction(null)} onConfirm={executeAction} title={`Send ${confirmAction?.label || ''}?`} message={confirmAction?.warning || 'Are you sure?'} confirmText={`Send ${confirmAction?.label || ''}`} />
             <ConfirmDialog isOpen={!!importConfirm} onClose={() => setImportConfirm(null)} onConfirm={doImport} title="Confirm Import" message={`Found ${importConfirm?.count || 0} valid participants. Proceed?`} confirmText="Import" />
