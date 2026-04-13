@@ -337,6 +337,18 @@ button, .btn {
 .form-group textarea { resize: vertical; min-height: 80px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
 
+/* ---------- Password Field Styling ---------- */
+.form-group input[type="password"] {
+  padding-right: 40px !important;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-contacts-auto-save-button {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 /* ---------- Tables ---------- */
 .table-responsive {
   overflow-x: auto;
