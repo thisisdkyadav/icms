@@ -494,6 +494,129 @@ button, .btn {
 .template-info ul { margin-left: var(--sp-5); }
 .template-info li { list-style: disc; color: var(--text-secondary); margin: 2px 0; font-size: var(--text-sm); }
 
+/* ---------- Certificate Config ---------- */
+.certificate-config-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.certificate-config-banner {
+  background: linear-gradient(135deg, #0f2a4d 0%, #1d4f8a 50%, #2563a8 100%);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4) var(--sp-5);
+  box-shadow: var(--shadow-md);
+}
+.certificate-config-banner h3 {
+  font-size: var(--text-md);
+  margin-bottom: 2px;
+}
+.certificate-config-banner p {
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.85);
+}
+.certificate-config-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: var(--sp-4);
+}
+.certificate-signature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+.certificate-logo-card {
+  background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.certificate-logo-card label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+.certificate-logo-card input[type="file"] {
+  width: 100%;
+  font-size: var(--text-xs);
+}
+.certificate-logo-preview {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+.certificate-signature-card {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.certificate-signature-card label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+.certificate-signature-card input[type="file"] {
+  width: 100%;
+  font-size: var(--text-xs);
+}
+.certificate-signature-preview-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.certificate-signature-preview {
+  width: 140px;
+  height: 44px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+.certificate-config-panel {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+}
+.certificate-config-panel h4 {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-3);
+}
+.certificate-config-panel--builder {
+  background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-card) 100%);
+}
+.certificate-hint {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-3);
+}
+.certificate-inline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.certificate-inline-row input {
+  flex: 1;
+}
+
 /* ---------- Camera / Scanner ---------- */
 .scan-options {
   display: flex; gap: var(--sp-2); align-items: center;
@@ -603,7 +726,10 @@ button, .btn {
 .modal {
   background: var(--bg-card); border: 1px solid var(--border-color);
   border-radius: var(--radius-xl); box-shadow: var(--shadow-xl);
-  width: 100%; overflow: hidden;
+  width: 100%; max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes modalIn {
@@ -612,11 +738,12 @@ button, .btn {
 }
 .modal--sm { max-width: 400px; }
 .modal--md { max-width: 560px; }
-.modal--lg { max-width: 720px; }
+.modal--lg { max-width: 960px; }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 .modal-title {
   font-size: var(--text-lg); font-weight: var(--font-semibold);
@@ -632,11 +759,15 @@ button, .btn {
 .modal-close:hover {
   background: var(--bg-hover); color: var(--text-primary);
 }
-.modal-body { padding: var(--sp-5); }
+.modal-body {
+  padding: var(--sp-5);
+  overflow-y: auto;
+}
 .modal-footer {
   display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2);
   padding: var(--sp-4) var(--sp-5);
   border-top: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 .modal-form-actions {
   display: flex; align-items: center; justify-content: flex-end;
@@ -655,4 +786,7 @@ button, .btn {
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .modal { margin: var(--sp-4); }
+  .certificate-signature-grid { grid-template-columns: 1fr; }
+  .certificate-config-grid { grid-template-columns: 1fr; }
+  .certificate-inline-row { flex-direction: column; align-items: stretch; }
 }

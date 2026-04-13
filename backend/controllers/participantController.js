@@ -211,11 +211,50 @@ export const markAttendance = async (req, res) => {
   }
 };
 
+const findPreviewParticipant = async (eventId, participantId) => {
+  if (participantId) {
+    return Participant.findOne({ _id: participantId, event: eventId });
+  }
+
+  const attendedParticipant = await Participant.findOne({ event: eventId, attended: true });
+  if (attendedParticipant) {
+    return attendedParticipant;
+  }
+
+  return Participant.findOne({ event: eventId });
+};
+
+export const previewCertificate = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { participantId, certificateConfig } = req.body;
+
+    const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
+    if (!event) {
+      return res.status(status).json(body);
+    }
+
+    const participant = await findPreviewParticipant(eventId, participantId);
+    if (!participant) {
+      return res.status(404).json({ message: 'No participant available for preview' });
+    }
+
+    const pdfBuffer = await generateCertificate({ participant, event, certificateConfig });
+    const safeName = participant.name ? participant.name.replace(/\s+/g, '_') : 'Participant';
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Certificate_Preview_${safeName}.pdf"`);
+    return res.send(pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Send certificates with PDF
 export const sendCertificates = async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { participantIds } = req.body;
+    const { participantIds, certificateConfig } = req.body;
 
     const { event, status, body } = await loadAccessibleEvent(eventId, req.user);
     if (!event) {
@@ -232,7 +271,11 @@ export const sendCertificates = async (req, res) => {
 
     for (const p of participants) {
       try {
-        const pdfBuffer = await generateCertificate(p.name, event.name, event.date);
+        const pdfBuffer = await generateCertificate({
+          participant: p,
+          event,
+          certificateConfig
+        });
 
         await sendEmail({
           to: p.email,
