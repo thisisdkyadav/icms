@@ -6,7 +6,6 @@ import Admin from '../models/Admin.js';
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     // Find user by email
     const user = await Admin.findOne({ email });
     if (!user) {
@@ -44,7 +43,11 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-
+    // check if email is valid or not
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
     // Check if user exists
     const existingUser = await Admin.findOne({ email });
     if (existingUser) {
