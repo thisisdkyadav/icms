@@ -5,17 +5,31 @@ import Admin from '../models/Admin.js';
 // Login admin
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // Check missing fields
+    if (!req.body.email || !req.body.password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    // Check type
+    if (
+      typeof req.body.email !== 'string' ||
+      typeof req.body.password !== 'string'
+    ) {
+      return res.status(400).json({ message: 'Invalid input format' });
+    }
+
+    const email = req.body.email.toLowerCase().trim();
+    const password = req.body.password;
+
     // Find user by email
-    const user = await Admin.findOne({ email: email.toLowerCase() });
+    const user = await Admin.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Create token
@@ -43,30 +57,44 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
+
+    if (
+      typeof name !== 'string' ||
+      typeof email !== 'string' ||
+      typeof password !== 'string'
+    ) {
+      return res.status(400).json({ message: 'Invalid input format' });
+    }
+
+    const emailStr = email.toLowerCase().trim();
+
     // check if email is valid or not
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(emailStr)) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
+
     // Check if user exists
-    const existingUser = await Admin.findOne({ email: email.toLowerCase() });
+    const existingUser = await Admin.findOne({ email: emailStr });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already exists' });
     }
+
     // Check password length    
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
     const user = new Admin({
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      email: emailStr,
       password: hashedPassword,
-      role: role || 'admin'
+      role: typeof role === 'string' ? role : 'admin'
     });
 
     await user.save();
@@ -112,9 +140,24 @@ export const getAssignableAdmins = async (req, res) => {
 export const updateAdmin = async (req, res) => {
   try {
     const { name, email, role } = req.body;
+
+    if (
+      (email && typeof email !== 'string') ||
+      (name && typeof name !== 'string') ||
+      (role && typeof role !== 'string')
+    ) {
+      return res.status(400).json({ message: 'Invalid input format' });
+    }
+
+    const updateData = {
+      name: name?.trim(),
+      email: email ? email.toLowerCase().trim() : undefined,
+      role
+    };
+
     const user = await Admin.findByIdAndUpdate(
       req.params.id,
-      { name, email, role },
+      updateData,
       { new: true }
     ).select('-password');
 
