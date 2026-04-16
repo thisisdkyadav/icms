@@ -519,6 +519,10 @@ export const exportParticipants = async (req, res) => {
       query.attended = true;
     }
 
+    if (type === 'notAttended') {
+      query.attended = false;
+    }
+
     const participants = await Participant.find(query);
 
     if (!participants.length) {

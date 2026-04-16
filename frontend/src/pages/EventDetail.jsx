@@ -629,12 +629,16 @@ function EventDetail() {
       return;
     }
 
-    if (
-      exportOptions.type === "attended" &&
-      participants.filter((p) => p.attended).length === 0
-    ) {
+    if (exportOptions.type === "attended" &&
+      participants.filter((p) => p.attended).length === 0) {
       setToast({ message: "No attended participants found", type: "error" });
       return;
+    }
+
+    if (exportOptions.type === 'notAttended' &&
+        participants.filter(p => !p.attended).length === 0) {
+        setToast({ message: 'No not-attended participants found', type: 'error' });
+        return;
     }
 
     setExportLoading(true);
@@ -849,12 +853,15 @@ function EventDetail() {
           >
             <option value="all">All Participants</option>
             <option value="attended">Only Attended</option>
+            <option value="notAttended">Only Not Attended</option>
           </select>
         </div>
 
         <p style={{ fontSize: "12px", color: "gray", marginTop: "6px" }}>
           {exportOptions.type === "attended"
-            ? `${participants.filter((p) => p.attended).length} attended participants will be exported`
+            ? `${participants.filter(p => p.attended).length} attended participants will be exported`
+            : exportOptions.type === "notAttended"
+            ? `${participants.filter(p => !p.attended).length} not attended participants will be exported`
             : `${participants.length} participants will be exported`}
         </p>
 
