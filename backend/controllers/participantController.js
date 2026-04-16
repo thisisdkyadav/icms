@@ -184,14 +184,44 @@ export const markAttendance = async (req, res) => {
   try {
     const { qrCode } = req.body;
 
-    const participant = await Participant.findOne({ qrCode }).populate('event', 'name');
-    
+    const participant = await Participant
+      .findOne({ qrCode })
+      .populate('event', 'name date'); 
+
     if (!participant) {
       return res.status(404).json({ message: 'Invalid QR code' });
     }
+    
+    const now = new Date();
+    const eventDate = new Date(participant.event.date);
+
+    const formattedDate = eventDate.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const startOfDay = new Date(eventDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(eventDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+   if (now < startOfDay) {
+      return res.status(400).json({
+        message: `Attendance will open on ${formattedDate}. Please try again on the event day.`
+      });
+    }
+
+    if (now > endOfDay) {
+      return res.status(400).json({
+        message: `This QR code is no longer valid. The event was held on ${formattedDate}.`
+      });
+    }
+
 
     if (participant.attended) {
-      return res.json({ 
+      return res.json({
         message: 'Already marked as attended',
         participant,
         alreadyAttended: true
@@ -206,10 +236,36 @@ export const markAttendance = async (req, res) => {
       participant,
       alreadyAttended: false
     });
+
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+export const searchParticipants = async (req, res) => {
+  try {
+    const { eventId, query } = req.query;
+
+    if (!eventId || !query) {
+      return res.status(400).json({ message: 'eventId and query required' });
+    }
+
+    const participants = await Participant.find({
+      event: eventId,
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    })
+      .select('name email attended qrCode')
+      .limit(10);
+
+    res.json(participants);
+  } catch (error) {
+    res.status(500).json({ message: 'Search failed' });
+  }
+};
+
 
 const findPreviewParticipant = async (eventId, participantId) => {
   if (participantId) {

@@ -12,6 +12,7 @@ router.post('/import/:eventId', participantController.importFromCSV);
 router.get('/event/:eventId', participantController.getByEvent);
 router.post('/send-qr/:eventId', participantController.sendQRCodes);
 router.post('/attendance', participantController.markAttendance);
+router.get('/search', participantController.searchParticipants);
 router.post('/certificate-preview/:eventId', participantController.previewCertificate);
 router.post('/send-certificates/:eventId', participantController.sendCertificates);
 router.post('/send-receipts/:eventId', participantController.sendReceipts);

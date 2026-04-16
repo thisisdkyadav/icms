@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import { markAttendance } from '../services/api';
+import { markAttendance, getEvents, searchParticipants } from '../services/api';
 import { usePage } from '../contexts/PageContext';
 import Card from '../components/Card';
 import Toast from '../components/Toast';
@@ -17,7 +17,14 @@ function Attendance() {
     const [toast, setToast] = useState(null);
     const videoRef = useRef(null);
     const readerRef = useRef(null);
+    const searchRef = useRef(null);
     const { setPage } = usePage();
+
+    const [events, setEvents] = useState([]);
+    const [selectedEvent, setSelectedEvent] = useState('');
+    const [search, setSearch] = useState('');
+    const [suggestions, setSuggestions] = useState([]);
+    const [selectedParticipant, setSelectedParticipant] = useState(null);
 
     useEffect(() => {
         setPage('Scan Attendance', 'Point camera at QR code or enter manually');
@@ -28,6 +35,47 @@ function Attendance() {
         getCameras();
         return () => { stopCamera(); if (readerRef.current) readerRef.current.reset(); };
     }, []);
+
+    useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+            const res = await getEvents();
+            setEvents(res.data);
+            } catch {
+            console.error('Failed to load events');
+            }
+        };
+
+        fetchEvents();
+    }, []);
+
+
+    useEffect(() => {
+        if (!search || !selectedEvent) return;
+
+        const delay = setTimeout(async () => {
+            try {
+            const res = await searchParticipants(selectedEvent, search);
+            setSuggestions(res.data);
+            } catch {
+            setSuggestions([]);
+            }
+        }, 300);
+
+        return () => clearTimeout(delay);
+    }, [search, selectedEvent]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setSuggestions([]);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
 
     const getCameras = async () => {
         try {
@@ -63,12 +111,23 @@ function Attendance() {
         finally { setLoading(false); }
     };
 
-    const handleManualSubmit = async (e) => {
-        e.preventDefault(); if (!qrCode.trim()) return;
-        setLoading(true); setResult(null);
-        try { const response = await markAttendance(qrCode.trim()); setResult({ success: true, data: response.data }); setQrCode(''); }
-        catch (error) { setResult({ success: false, message: error.response?.data?.message || 'Failed' }); }
-        finally { setLoading(false); }
+    const handleManualSubmit = async () => {
+        if (!selectedParticipant) return;
+
+        setLoading(true);
+        setResult(null);
+
+        try {
+            const response = await markAttendance(selectedParticipant.qrCode);
+            setResult({ success: true, data: response.data });
+        } catch (error) {
+            setResult({
+            success: false,
+            message: error.response?.data?.message || 'Failed'
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const scanAgain = () => { setResult(null); startCamera(selectedCamera); };
@@ -99,10 +158,21 @@ function Attendance() {
                 <div className={`result-card ${result.success ? 'success' : 'error'}`}>
                     {result.success ? (
                         <>
-                            <h3>{result.data.alreadyAttended ? 'Already Attended' : 'Attendance Marked'}</h3>
+                            <h3>{result.data.alreadyAttended ? 'Already marked as attended' : 'Attendance Marked'}</h3>
                             <p><strong>Name:</strong> {result.data.participant.name}</p>
                             <p><strong>Email:</strong> {result.data.participant.email}</p>
-                            {result.data.participant.event && <p><strong>Event:</strong> {result.data.participant.event.name}</p>}
+                            {result.data.participant.event && (
+                            <>
+                                <p><strong>Event:</strong> {result.data.participant.event.name}</p>
+                                <p><strong>Event Date:</strong>{" "}
+                                {new Date(result.data.participant.event.date).toLocaleDateString('en-IN', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                })}
+                                </p>
+                            </>
+                            )}
                         </>
                     ) : (<><h3>Error</h3><p>{result.message}</p></>)}
                     <button onClick={scanAgain} className="btn-secondary mt-4">Scan Another</button>
@@ -110,10 +180,110 @@ function Attendance() {
             )}
 
             <Card title="Manual Entry" className="manual-entry">
-                <form onSubmit={handleManualSubmit}>
-                    <div className="form-group"><label>QR Code Value</label><input type="text" value={qrCode} onChange={(e) => setQrCode(e.target.value)} placeholder="Paste QR code value..." /></div>
-                    <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Processing...' : 'Mark Attendance'}</button>
-                </form>
+                <div className="form-group">
+                    <label>Select Event</label>
+                    <select
+                    value={selectedEvent}
+                    onChange={(e) => {
+                        setSelectedEvent(e.target.value);
+                        setSearch('');
+                        setSelectedParticipant(null);
+                    }}
+                    >
+                    <option value="">Select Event</option>
+                    {events.map(event => (
+                        <option key={event._id} value={event._id}>
+                        {event.name}
+                        </option>
+                    ))}
+                    </select>
+                </div>
+
+                <div className="form-group" ref={searchRef}>
+                    <label>Search Participant</label>
+
+                    <div className="search-input-wrapper">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            disabled={!selectedEvent}
+                            placeholder={
+                                selectedEvent
+                                    ? "Type name or email..."
+                                    : "Select event first"
+                            }
+                        />
+
+                        {search && (
+                            <button
+                                className="clear-btn"
+                                onClick={() => {
+                                    setSearch('');
+                                    setSuggestions([]);
+                                    setSelectedParticipant(null);
+                                }}
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
+
+                    {search && suggestions.length > 0 && (
+                        <div className="suggestions-table-wrapper">
+                            <table className="data-table suggestions-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {suggestions.map(p => (
+                                        <tr
+                                            key={p._id}
+                                            className={`suggestion-row 
+                                                ${p.attended ? 'disabled' : ''} 
+                                                ${selectedParticipant?._id === p._id ? 'selected' : ''}
+                                            `}
+                                            onClick={() => {
+                                                if (p.attended) return;
+
+                                                setSelectedParticipant(p);
+                                                setSearch(`${p.name} (${p.email})`);
+                                                setSuggestions([]);
+                                            }}
+                                        >
+                                            <td>{p.name}</td>
+                                            <td>{p.email}</td>
+                                            <td>
+                                                {p.attended ? (
+                                                    <span className="badge badge--success">Attended</span>
+                                                ) : (
+                                                    <span className="badge badge--default">Not Attended</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {search && suggestions.length === 0 && !selectedParticipant && !loading && (
+                        <div className="no-results">No matching participants found</div>
+                    )}
+                </div>
+
+                <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={!selectedParticipant || loading}
+                    onClick={handleManualSubmit}
+                >
+                    {loading ? 'Processing...' : 'Mark Attendance'}
+                </button>
             </Card>
 
             {toast && <Toast {...toast} onClose={() => setToast(null)} />}

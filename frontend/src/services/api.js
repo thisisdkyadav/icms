@@ -58,6 +58,7 @@ export const getParticipants = (eventId) => api.get(`/participants/event/${event
 export const importParticipants = (eventId, participants) => api.post(`/participants/import/${eventId}`, { participants });
 export const sendQRCodes = (eventId, participantIds) => api.post(`/participants/send-qr/${eventId}`, { participantIds });
 export const markAttendance = (qrCode) => api.post('/participants/attendance', { qrCode });
+export const searchParticipants = (eventId, query) => api.get(`/participants/search?eventId=${eventId}&query=${query}`);
 export const previewCertificate = (eventId, payload) => api.post(`/participants/certificate-preview/${eventId}`, payload, { responseType: 'blob' });
 export const sendCertificates = (eventId, payload = {}) => api.post(`/participants/send-certificates/${eventId}`, payload);
 export const sendReceipts = (eventId, participantIds) => api.post(`/participants/send-receipts/${eventId}`, { participantIds });

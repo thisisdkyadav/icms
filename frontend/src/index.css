@@ -794,6 +794,81 @@ input[type="password"]::-ms-reveal {
   line-height: 1.6; margin-bottom: var(--sp-2);
 }
 
+/* ---------- Suggestions Table ---------- */
+.suggestions-table-wrapper {
+  margin-top: var(--sp-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  max-height: 250px;
+  overflow-x: auto;
+  overflow-y: auto;
+  background: var(--bg-card);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.suggestions-table {
+  min-width: max-content;
+}
+
+.suggestion-row {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.suggestion-row:hover {
+  background: var(--bg-hover);
+}
+
+.suggestion-row.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.suggestion-row.disabled:hover {
+  background: none;
+}
+
+.suggestion-row.selected {
+  background: var(--primary-50);
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-input-wrapper input {
+  padding-right: 32px;
+}
+
+.clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-btn:hover {
+  color: var(--danger);
+}
+
+.no-results {
+  padding: var(--sp-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   .sidebar { display: none; }
