@@ -354,11 +354,18 @@ input[type="password"]::-ms-reveal {
 
 /* ---------- Tables ---------- */
 .table-responsive {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 .card .table-responsive { border-radius: 0; border: none; }
 .data-table {
-  width: 100%; border-collapse: collapse; background: var(--bg-card);
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  background: var(--bg-card);
 }
 .data-table th,
 .data-table td {
@@ -366,6 +373,9 @@ input[type="password"]::-ms-reveal {
   text-align: left; font-size: var(--text-sm);
   border-bottom: 1px solid var(--border-light);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
   transition: background var(--transition-fast);
 }
 .data-table th {
@@ -380,6 +390,10 @@ input[type="password"]::-ms-reveal {
 }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table .actions-cell {
+  white-space: nowrap;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   display: flex; gap: var(--sp-1); align-items: center;
 }
 
