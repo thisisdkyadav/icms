@@ -21,6 +21,7 @@ const IconUsers = () => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
+
 const IconKey = () => (
   <svg
     width="20"
@@ -34,6 +35,7 @@ const IconKey = () => (
     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zM15.5 7.5l-2.5 2.5" />
   </svg>
 );
+
 const IconUser = () => (
   <svg
     width="20"
@@ -48,6 +50,7 @@ const IconUser = () => (
     <circle cx="12" cy="7" r="4" />
   </svg>
 );
+
 const IconCalendar = () => (
   <svg
     width="20"
@@ -64,6 +67,7 @@ const IconCalendar = () => (
     <line x1="3" y1="10" x2="21" y2="10" />
   </svg>
 );
+
 const IconTarget = () => (
   <svg
     width="20"
@@ -84,10 +88,13 @@ function Dashboard() {
   const [events, setEvents] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const { setPage } = usePage();
   const [sortOrder, setSortOrder] = useState("newest");
+
+  const navigate = useNavigate();
+  const { setPage } = usePage();
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
   useEffect(() => {
     loadData();
   }, []);
@@ -97,17 +104,23 @@ function Dashboard() {
       setPage(
         `Welcome, ${user.name}`,
         "System administration",
-        <button onClick={() => navigate("/users")} className="btn-primary">
+        <button
+          onClick={() => navigate("/users")}
+          className="btn-primary"
+        >
           Manage Users
-        </button>,
+        </button>
       );
     } else {
       setPage(
         `Welcome, ${user.name}`,
         `Logged in as ${user.role}`,
-        <button onClick={() => navigate("/events")} className="btn-primary">
+        <button
+          onClick={() => navigate("/events")}
+          className="btn-primary"
+        >
           View Events
-        </button>,
+        </button>
       );
     }
   }, [user.name, user.role]);
@@ -127,21 +140,37 @@ function Dashboard() {
       setLoading(false);
     }
   };
+
   const toggleSort = () => {
-    setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"));
+    setSortOrder((prev) =>
+      prev === "newest" ? "oldest" : "newest"
+    );
   };
+
   const sortedEvents = [...events].sort((a, b) => {
     return sortOrder === "newest"
       ? new Date(b.date) - new Date(a.date)
       : new Date(a.date) - new Date(b.date);
   });
 
-  if (loading)
+  // Only today or future events
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcomingEvents = sortedEvents.filter((event) => {
+    const eventDate = new Date(event.date);
+    eventDate.setHours(0, 0, 0, 0);
+    return eventDate >= today;
+  });
+
+  if (loading) {
     return (
       <div className="loading">
-        <div className="spinner"></div> Loading...
+        <div className="spinner"></div>
+        Loading...
       </div>
     );
+  }
 
   if (user.role === "superadmin") {
     return (
@@ -153,16 +182,20 @@ function Dashboard() {
             value={users.length}
             color="primary"
           />
+
           <StatCard
             icon={<IconKey />}
             label="Admins"
             value={users.filter((u) => u.role === "admin").length}
             color="success"
           />
+
           <StatCard
             icon={<IconUser />}
             label="SubAdmins"
-            value={users.filter((u) => u.role === "subadmin").length}
+            value={
+              users.filter((u) => u.role === "subadmin").length
+            }
             color="warning"
           />
         </div>
@@ -179,6 +212,7 @@ function Dashboard() {
           value={events.length}
           color="primary"
         />
+
         <StatCard
           icon={<IconTarget />}
           label="Your Role"
@@ -187,15 +221,14 @@ function Dashboard() {
         />
       </div>
 
-      <h2 className="section-title">Recent Events</h2>
-      {events.length === 0 ? (
+      <h2 className="section-title">Upcoming Events</h2>
+
+      {upcomingEvents.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state__icon">
             <IconCalendar />
           </div>
-          <p>
-            No events yet. {user.role === "admin" && "Create your first event!"}
-          </p>
+          <p>No upcoming events.</p>
         </div>
       ) : (
         <Card noPad>
@@ -204,6 +237,7 @@ function Dashboard() {
               <thead>
                 <tr>
                   <th>Name</th>
+
                   <th>
                     Date
                     <span
@@ -218,19 +252,31 @@ function Dashboard() {
                       {sortOrder === "newest" ? "↓" : "↑"}
                     </span>
                   </th>
+
                   <th>Description</th>
                 </tr>
               </thead>
+
               <tbody>
-                {sortedEvents.slice(0, 5).map((event) => (
+                {upcomingEvents.slice(0, 5).map((event) => (
                   <tr
                     key={event._id}
-                    onClick={() => navigate(`/events/${event._id}`)}
+                    onClick={() =>
+                      navigate(`/events/${event._id}`)
+                    }
                     style={{ cursor: "pointer" }}
                   >
                     <td>{event.name}</td>
-                    <td>{new Date(event.date).toLocaleDateString()}</td>
-                    <td>{event.description || "—"}</td>
+
+                    <td>
+                      {new Date(
+                        event.date
+                      ).toLocaleDateString()}
+                    </td>
+
+                    <td>
+                      {event.description || "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
