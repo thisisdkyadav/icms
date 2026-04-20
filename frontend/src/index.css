@@ -231,7 +231,7 @@ button, .btn {
 .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
 .btn-sm { padding: var(--sp-2) var(--sp-4); font-size: var(--text-xs); }
 
-/* ---------- Cards (Premium) ---------- */
+/* ---------- Cards ---------- */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);

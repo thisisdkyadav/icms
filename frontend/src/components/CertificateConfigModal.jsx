@@ -167,7 +167,7 @@ function CertificateConfigModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Configure Certificate" size="lg">
       <div className="certificate-config-shell">
         <div className="certificate-config-banner">
-          <h3>Premium Certificate Studio</h3>
+          <h3>Certificate Studio</h3>
           <p>Use one complete paragraph for the body. It will auto-wrap into clean centered lines in the PDF.</p>
         </div>
 
@@ -346,7 +346,7 @@ function CertificateConfigModal({
 
         <div className="modal-form-actions">
           <button type="button" className="btn-secondary" onClick={() => handlePreviewAction('view')} disabled={!!actionLoading}>
-            {actionLoading === 'view' ? 'Opening...' : 'View Premium Certificate'}
+            {actionLoading === 'view' ? 'Opening...' : 'View Certificate'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => handlePreviewAction('download')} disabled={!!actionLoading}>
             {actionLoading === 'download' ? 'Downloading...' : 'Download Preview Certificate'}
