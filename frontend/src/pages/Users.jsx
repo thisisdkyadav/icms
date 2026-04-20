@@ -67,7 +67,7 @@ function Users() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const { setPage } = usePage();
-
+  const [sortOrder, setSortOrder] = useState("newest");
   useEffect(() => {
     loadUsers();
   }, []);
@@ -129,7 +129,14 @@ function Users() {
 
   const admins = users.filter((u) => u.role === "admin").length;
   const subadmins = users.filter((u) => u.role === "subadmin").length;
-
+  const toggleSort = () => {
+  setSortOrder(prev => (prev === "newest" ? "oldest" : "newest"));
+};
+  const sortedUsers = [...users].sort((a, b) => {
+  return sortOrder === "newest"
+    ? new Date(b.createdAt) - new Date(a.createdAt)
+    : new Date(a.createdAt) - new Date(b.createdAt);
+});
   return (
     <div>
       <div className="stats-grid">
@@ -161,12 +168,25 @@ function Users() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Created</th>
+                <th>
+                    Created
+                    <span
+                      onClick={toggleSort}
+                      style={{
+                        cursor: "pointer",
+                        marginLeft: "6px",
+                        fontSize: "12px",
+                      }}
+                      title="Sort by date"
+                    >
+                      {sortOrder === "newest" ? "↓" : "↑"}
+                    </span>
+                  </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {sortedUsers.map((u) => (
                 <tr key={u._id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
