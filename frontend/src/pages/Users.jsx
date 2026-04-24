@@ -1,5 +1,10 @@
+import {
+  getAllUsers,
+  createUser,
+  deleteUser,
+  updateUser,
+} from "../services/api";
 import { useState, useEffect } from "react";
-import { getAllUsers, createUser, deleteUser } from "../services/api";
 import { usePage } from "../contexts/PageContext";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
@@ -7,7 +12,6 @@ import StatCard from "../components/StatCard";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import Toast from "../components/Toast";
-import PasswordInput from "../components/PasswordInput";
 
 const IconUsers = () => (
   <svg
@@ -66,8 +70,10 @@ function Users() {
   });
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editRole, setEditRole] = useState("");
   const { setPage } = usePage();
-  const [sortOrder, setSortOrder] = useState("newest");
+
   useEffect(() => {
     loadUsers();
   }, []);
@@ -107,6 +113,20 @@ function Users() {
     }
   };
 
+  const handleEditRole = async () => {
+    if (!editTarget) return;
+    try {
+      await updateUser(editTarget, { role: editRole });
+      setToast({ message: "Role updated successfully", type: "success" });
+      loadUsers();
+    } catch (error) {
+      setToast({ message: "Failed to update role", type: "error" });
+    } finally {
+      setEditTarget(null);
+      setEditRole("");
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -129,14 +149,7 @@ function Users() {
 
   const admins = users.filter((u) => u.role === "admin").length;
   const subadmins = users.filter((u) => u.role === "subadmin").length;
-  const toggleSort = () => {
-  setSortOrder(prev => (prev === "newest" ? "oldest" : "newest"));
-};
-  const sortedUsers = [...users].sort((a, b) => {
-  return sortOrder === "newest"
-    ? new Date(b.createdAt) - new Date(a.createdAt)
-    : new Date(a.createdAt) - new Date(b.createdAt);
-});
+
   return (
     <div>
       <div className="stats-grid">
@@ -168,25 +181,12 @@ function Users() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>
-                    Created
-                    <span
-                      onClick={toggleSort}
-                      style={{
-                        cursor: "pointer",
-                        marginLeft: "6px",
-                        fontSize: "12px",
-                      }}
-                      title="Sort by date"
-                    >
-                      {sortOrder === "newest" ? "↓" : "↑"}
-                    </span>
-                  </th>
+                <th>Created</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {sortedUsers.map((u) => (
+              {users.map((u) => (
                 <tr key={u._id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
@@ -194,14 +194,25 @@ function Users() {
                     <Badge variant={u.role}>{u.role}</Badge>
                   </td>
                   <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td>
+                  <td style={{ display: "flex", gap: "8px" }}>
                     {u.role !== "superadmin" && (
-                      <button
-                        onClick={() => setDeleteTarget(u._id)}
-                        className="btn-danger btn-sm"
-                      >
-                        Delete
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditTarget(u._id);
+                            setEditRole(u.role);
+                          }}
+                          className="btn-primary btn-sm"
+                        >
+                          Edit Role
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(u._id)}
+                          className="btn-danger btn-sm"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -248,15 +259,18 @@ function Users() {
             </div>
           </div>
           <div className="form-row">
-            <PasswordInput
-              label="Password"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              placeholder="Mininum 6 characters"
-              required
-            />
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                placeholder="Minimum 6 characters"
+                required
+              />
+            </div>
             <div className="form-group">
               <label>Role</label>
               <select
@@ -283,6 +297,31 @@ function Users() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title="Edit User Role"
+      >
+        <div className="form-group">
+          <label>Role</label>
+          <select
+            value={editRole}
+            onChange={(e) => setEditRole(e.target.value)}
+          >
+            <option value="admin">Admin</option>
+            <option value="subadmin">SubAdmin</option>
+          </select>
+        </div>
+        <div className="modal-form-actions">
+          <button className="btn-secondary" onClick={() => setEditTarget(null)}>
+            Cancel
+          </button>
+          <button className="btn-primary" onClick={handleEditRole}>
+            Save
+          </button>
+        </div>
       </Modal>
 
       <ConfirmDialog
